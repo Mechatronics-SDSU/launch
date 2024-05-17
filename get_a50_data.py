@@ -10,7 +10,7 @@ BUFFER_SIZE = 1024  # Size of the receive buffer
 class A50Node:
     def __init__(self):
         self.sock = None  # Initialize socket to None
-        self.serv_addr = (TCP_IP, TCP_PORT)  # Server address (IP and port)
+        self.serv_addr = ("localhost", 56789)  # Server address (IP and port)
         self.buffer = bytearray(BUFFER_SIZE)  # Create a buffer to store received data
 
     def resetDeadReckoning(self):
@@ -35,15 +35,15 @@ class A50Node:
             return None  # Return None if connection fails
 
     def parseJson(self, json_dict):
-        try:
-            # Extract data from the JSON dictionary
+        try:    
             x = json_dict["x"]
             y = json_dict["y"]
             z = json_dict["z"]
             yaw = json_dict["yaw"]
             pitch = json_dict["pitch"]
             roll = json_dict["roll"]
-            return [yaw, pitch, roll, x, y, z]  # Return extracted data as a list
+
+            return [yaw, pitch, roll, x, y, z]
         except Exception as e:
             print("Failed to parse JSON:", e)
             return []  # Return an empty list if parsing fails

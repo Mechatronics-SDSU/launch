@@ -1,6 +1,5 @@
 import socket
 import json
-import time
 
 # Define constants
 TCP_IP = '192.168.194.95'  # IP address of the A50 sensor
@@ -12,6 +11,7 @@ class A50Node:
         self.sock = None  # Initialize socket to None
         self.serv_addr = ("localhost", 56789)  # Server address (IP and port)
         self.buffer = bytearray(BUFFER_SIZE)  # Create a buffer to store received data
+        self.resetDeadReckoning()
 
     def resetDeadReckoning(self):
         try:
@@ -48,32 +48,32 @@ class A50Node:
             print("Failed to parse JSON:", e)
             return []  # Return an empty list if parsing fails
 
-    def publishData(self, a50_data):
-        # Publish the extracted A50 sensor data
+    def printData(self, a50_data):
         print("Publishing State Data:")
         print("Yaw:", a50_data[0], "Pitch:", a50_data[1], "Roll:", a50_data[2])
         print("X:", a50_data[3], "Y:", a50_data[4], "Z:", a50_data[5])
 
-    def getA50Data(self):
+    def recieveData(self):
         try:
             # Receive data from the socket, parse JSON, and publish data
             bytesRead = self.sock.recv(BUFFER_SIZE)
             json_stream = bytesRead.decode()
             json_dict = json.loads(json_stream)
             a50_data = self.parseJson(json_dict)
-            if a50_data:
-                self.publishData(a50_data)
+            self.printData(a50_data)
+            return a50_data
         except Exception as e:
             print("Error in getting A50 data:", e)
             self.sock.close()
             self.sock = self.connectToSocket()  # Reconnect if an error occurs
+            return None
 
     def run(self):
         # Connect to the socket and continuously receive data
         self.sock = self.connectToSocket()
         if self.sock:
             while True:
-                self.getA50Data()  # Receive and process A50 sensor data
+                self.recieveData()  # Receive and process A50 sensor data
 
 # Run the node
 if __name__ == "__main__":

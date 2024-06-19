@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import socket
 import json
 
@@ -6,10 +8,10 @@ TCP_IP = '192.168.194.95'  # IP address of the A50 sensor
 TCP_PORT = 16171  # Port number the A50 sensor is listening on
 BUFFER_SIZE = 1024  # Size of the receive buffer
 
-class A50Node:
+class DVL:
     def __init__(self):
         self.sock = None  # Initialize socket to None
-        self.serv_addr = ("localhost", 56789)  # Server address (IP and port)
+        self.serv_addr = ("localhost", TCP_PORT)  # Server address (IP and port)
         self.buffer = bytearray(BUFFER_SIZE)  # Create a buffer to store received data
         self.resetDeadReckoning()
 
@@ -77,5 +79,5 @@ class A50Node:
 
 # Run the node
 if __name__ == "__main__":
-    a50_node = A50Node()
+    a50_node = DVL()
     a50_node.run()

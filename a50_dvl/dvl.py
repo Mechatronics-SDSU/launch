@@ -51,6 +51,8 @@ class DVL:
         print("yaw:", a50_data[0], "pitch:", a50_data[1], "roll:", a50_data[2])
         print("x:", a50_data[3], "y:", a50_data[4], "z:", a50_data[5])
 
+        #a50_data = [yaw, pitch, roll, x, y, z]
+
     def recieveData(self):
         dvl_data = None
         while dvl_data == None:

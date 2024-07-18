@@ -2,6 +2,18 @@ from a50_dvl.dvl import DVL
 
 class DVL_Interface:
 
+    """
+    discord: @kialli
+    github: @kchan5071
+
+    This class is used to interface with the DVL sensor. 
+    It is used to get the data from the DVL sensor and update the position and orientation of the AUV.
+
+    it takes data from the dvl class and updates the shared memory values of the AUV
+
+    this class acts as a bridge, should be unproblematic(hopefully)
+    """
+
     def __init__(self, x, y, z, pitch, roll, yaw):
         self.x = x
         self.y = y

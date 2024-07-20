@@ -18,8 +18,8 @@ class DepthSensor:
             pass
 
     def run(self):
-        if self.ser:
-            while True:
+        while True:
+            if self.ser:
                 self.recieveData() 
 
 if __name__ == "__main__":

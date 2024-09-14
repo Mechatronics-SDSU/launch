@@ -6,7 +6,7 @@ import json
 
 TCP_IP = '192.168.194.95' 
 TCP_PORT = 16171 
-BUFFER_SIZE = 1024
+BUFFER_SIZE = 2048
 
 class DVL:
     def __init__(self):
@@ -35,6 +35,23 @@ class DVL:
             return None 
 
     def parseJson(self, json_dict):
+        try:
+            vx = json_dict["vx"]
+            vy = json_dict["vy"]
+            vz = json_dict["vz"]
+            fom = json_dict["fom"]
+            cov = json_dict["covariance"]
+            alt = json_dict["altitude"]
+            transducers = json_dict["transducers"]
+            valid = json_dict["velocity_valid"]
+            status = json_dict["status"]
+            time = json_dict["time"]
+            time_of_validity = json_dict["time_of_validity"]
+            type_ = json_dict["type"]
+            return "velocity", [vx, vy, vz, alt, valid, status]
+        except Exception as e:
+            # print("not velocity data", e)
+            pass
         try:    
             x = json_dict["x"]
             y = json_dict["y"]
@@ -42,9 +59,10 @@ class DVL:
             yaw = json_dict["yaw"]
             pitch = json_dict["pitch"]
             roll = json_dict["roll"]
-            return [yaw, pitch, roll, x, y, z]
+            return "dead_reckoning", [yaw, pitch, roll, x, y, z]
         except Exception as e:
-            print("Failed to parse JSON:", e)
+            # print("Failed to parse JSON:", e)
+
             return [] 
 
     def printData(self, a50_data):
@@ -54,25 +72,25 @@ class DVL:
         #a50_data = [yaw, pitch, roll, x, y, z]
 
     def recieveData(self):
-        dvl_data = None
-        while dvl_data == None:
-            try:
-                bytesRead = self.sock.recv(BUFFER_SIZE)
-                if len(bytesRead) < 600:
-                    json_dict = json.loads(bytesRead)
-                    a50_data = self.parseJson(json_dict)
-                    self.printData(a50_data)
-                    dvl_data = a50_data
-            except Exception as e:
-                print("Error in getting A50 data:", e)
-                self.sock.close()
-                self.sock = self.connectToSocket() 
-        return dvl_data
-
+        dvl_data = ""
+        try:
+            bytesRead = self.sock.recv(BUFFER_SIZE)
+            dvl_data = bytesRead.decode()
+            # print("dvl_data:", dvl_data)
+        except Exception as e:
+            print("Error in getting A50 data:", e)
+            self.sock.close()
+            self.sock = self.connectToSocket()
+        message_type, ret = self.parseJson(json.loads(dvl_data))
+        # print("message_type:", message_type)
+        # print("ret:", ret)
+        return message_type, ret
+        
     def run(self):
         if self.sock:
             while True:
                 self.recieveData() 
+
 
 if __name__ == "__main__":
     a50_node = DVL()

@@ -1,4 +1,4 @@
-from sensors.depth_sensor import DepthSensor
+from modules.sensors.depth_sensor import DepthSensor
 from multiprocessing import Value
 
 class DepthSensorInterface:

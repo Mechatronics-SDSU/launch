@@ -7,7 +7,7 @@ creates shared memory for processes to communicate
 
 ## how to use git submodules
 
-`git clone --recursive https://github.com/Package-Repository/launch.git`
+`git clone --recursive https://github.com/Mechatronics-SDSU/launch.git`
 
 
 #### stage, commit, and push changes

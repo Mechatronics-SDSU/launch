@@ -10,26 +10,10 @@ creates shared memory for processes to communicate
 `git clone --recursive https://github.com/Mechatronics-SDSU/launch.git`
 
 
-#### stage, commit, and push changes
-
-if you have changes on a bunch of branches
-
-`git submodule foreach --recursive git add .`
-
-`git submodule foreach --recursive git commit -m "message"`
-
-`git submodule foreach --recursive git push`
-
-if you only have a change on one branch, you can just do the normal stuff such as 
-`git add .`
-
-#### add submodule
-
-`git submodule add (link)`
-
-example:
-
-`git submodule add https://github.com/Package-Repository/ColorFilter.git`
+### how to stage changes
+`git add filename`
+`git commit -m "commit message"`
+`git push`
 
 #### everythings broken
 

@@ -5,8 +5,7 @@ launches all processes in the AUV
 creates shared memory for processes to communicate
 
 
-## how to use git submodules
-
+## how to clone repo
 `git clone --recursive https://github.com/Mechatronics-SDSU/launch.git`
 
 

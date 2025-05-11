@@ -8,7 +8,7 @@ import logging
     https://github.com/rsunderr
     rwork@sundermeyer.com
 """
-
+# wrapper class for trax-related functions
 class TRAX:
     # constructor (serial and baud rate)
     def __init__(self, ser=None, baud=38400):
@@ -16,6 +16,8 @@ class TRAX:
         self.baud = baud
         self.lg = logging.getLogger()
     
+    
+    # establishes usb serial connection to trax
     def connect(self):
         print("USB CONNECTIONS: ")
         connections = subprocess.run("ls /dev/tty.usbserial*", shell=True, capture_output=True, text=True)
@@ -31,11 +33,11 @@ class TRAX:
             except:
                 self.lg.critical("NO CONNECTION FOUND")
     
+    # closes serial connection
     def close(self):
         self.ser.close()
 
-    # returns and prints bytea array packet based on frame ID and payload in trax-readable format
-    # payload expects an array of tuples which include the value and type*, i.e. [ (1, 'B'), (3.3, 'f') ] *type based on struct lib
+    # returns and prints byte array packet based on frame ID and payload in trax-readable format
     @staticmethod
     def get_packet(frameID, payload=None): # datagram: [ byte count uint16 ] [ frame ID uint8 ] [ payload (opt) ] [ CRC uint16 ]
         payload_bytes = TRAX.get_payload_bytes(frameID, payload)
@@ -49,45 +51,47 @@ class TRAX:
         print("TRANSMISSION:\t", TRAX.parse_bytes(packet))
         return packet
     
-    # generates a byte array based on frameID and tuple or array of specification IDs
+    # generates a byte array based on frameID and tuple/array of specification IDs
     @staticmethod
     def get_payload_bytes(frameID, payload=None):
         payload_bytes = bytearray()
-        if payload == None: return payload_bytes # return empty payload if no payload tuple passed
+        if payload == None: return payload_bytes # return empty payload if no payload tuple/array passed
         encode_str = ">" # struct pack encode string (big endian)
-        for _ in payload:
-            match frameID:
-                case 7:     encode_str += "B" # kGetConfig - UInt8 
-                case 10:    encode_str += "I" # kStartCal - UInt32
-                case 13:    encode_str += "BB" # kGetFIRFilters - UInt8 UInt8
-                case 17:    encode_str += "I" # kUserCalSampleCount - UInt32
-                case 24:    encode_str += "BBff" # kSetAcqParams - UInt8 UInt8 Float64 Float64
-                case 43:    encode_str += "BB" # kCopyCoeffSet - UInt8 UInt8
-                case 79:    encode_str += "B" # kSetFunctionalMode - UInt8 
-                case 107:   encode_str += "B" # kSetDistortMode - UInt8 
-                case 119:   encode_str += "B" # kSetMagTruthMethod - UInt8 
-                case 128:   encode_str += "Bf" # kSetMergeRate - UInt8 Float32
-                # ID SPECIFIC FRAMES:
-                case 3:     encode_str += TRAX.struct_chars(payload) # kSetDataComponents - ID Specific
-                case 6:     encode_str += "B" + TRAX.struct_chars(payload[1:]) # kSetConfig - UInt8 + ID Specific
-                case 12: # kSetFIRFilters - ID Specific
-                    encode_str += "BBB"
-                    N = payload[2] # NOTE: number of Float64 filter vals in payload based on 3rd bit of payload: (x,x, N, ...)
-                    if N == 0 or N == 4 or N == 8 or N == 16 or N == 32:
-                        for _ in range(N): encode_str += "F" # meant to be 0, 4, 8, 16, or 32 tap filter values
-                # no payload: 1, 4, 9, 11, 15, 21, 22, 25, 29, 31, 36, 52, 80, 108, 110, 120, 129
+        match frameID:
+            case 7:     encode_str += "B" # kGetConfig - UInt8 
+            case 10:    encode_str += "I" # kStartCal - UInt32
+            case 13:    encode_str += "BB" # kGetFIRFilters - UInt8 UInt8
+            case 17:    encode_str += "I" # kUserCalSampleCount - UInt32
+            case 24:    encode_str += "BBff" # kSetAcqParams - UInt8 UInt8 Float64 Float64
+            case 43:    encode_str += "BB" # kCopyCoeffSet - UInt8 UInt8
+            case 79:    encode_str += "B" # kSetFunctionalMode - UInt8 
+            case 107:   encode_str += "B" # kSetDistortMode - UInt8 
+            case 119:   encode_str += "B" # kSetMagTruthMethod - UInt8 
+            case 128:   encode_str += "Bf" # kSetMergeRate - UInt8 Float32
+            # ID SPECIFIC TYPE FRAMES:
+            case 3:     encode_str += TRAX.struct_chars(payload)# kSetDataComponents - ID Specific
+            case 6:     encode_str += "B" + TRAX.struct_chars(payload[1:]) # kSetConfig - UInt8 + ID Specific
+            case 12: # kSetFIRFilters - ID Specific
+                encode_str += "BBB"
+                N = payload[2] # NOTE: number of Float64 filter vals in payload based on 3rd bit of payload: (x,x, N, ...)
+                if N == 0 or N == 4 or N == 8 or N == 16 or N == 32:
+                    for _ in range(N): encode_str += "F" # meant to be 0, 4, 8, 16, or 32 tap filter values
+            # no payload: 1, 4, 9, 11, 15, 21, 22, 25, 29, 31, 36, 52, 80, 108, 110, 120, 129
         payload_bytes = struct.pack(encode_str, *payload)
         return payload_bytes
 
-    # transmits packet over USB, frame ID is an int
-    # payload expects an array of tuples which include the value and type*, i.e. [ (1, 'B'), (3.3, 'f') ] *type based on struct lib
+    # transmits packet over USB, frame ID is an int, tuple/array for payload values if applicable
     def send_packet(self, frameID, payload=None):
         self.ser.write(TRAX.get_packet(frameID, payload))
     
-    # receives and reads packet from TRAX, outputs a tuple of values read 
-    # if the datagram includes ID Specific types, pass the payload tuple from the prior send_packet() call that made the query
+    # receives and reads packet from TRAX, checks checksum, returns a tuple of values read 
+    # if the datagram includes ID Specific types, pass the payload tuple/array from the prior send_packet() call that made the query
     def recv_packet(self, payload=None):
-        packet = self.ser.readline()
+        packet = self.ser.readline() # read input message
+        if packet == b'': # if packet is empty, warn user and stop fxn
+            self.lg.critical("NO MESSAGE RECEIVED")
+            return -1
+        
         print("RECEIVED:\t", TRAX.parse_bytes(packet))
         response = TRAX.read_packet(packet, payload)
 
@@ -99,9 +103,11 @@ class TRAX:
             self.lg.critical("CORRUPTED PACKET: CHECKSUM FAILED")
             return -1
     
+    # reads packet of bytes in trax-readable format, returns tuple of values read
+    # if the datagram includes ID Specific types, pass the payload tuple from the prior send_packet() call that made the query
     @staticmethod
     def read_packet(packet, payload=None):
-        frameID = packet[2] # get frame ID from packet
+        frameID = packet[2] # get frame ID from packet (bytes)
         decode_str = ">HB" # big endian, byte count, ID
         match frameID:
             case 2:     decode_str += "II" # kGetModInfoResp    
@@ -112,7 +118,7 @@ class TRAX:
             case 81:    decode_str += "B" # kGetFunctionalModeResp
             case 109:   decode_str += "B" # kGetDistortionModeResp
             case 121:   decode_str += "B" # kGetMagTruthMethodResp
-            # ID SPECIFIC FRAMES:
+            # ID SPECIFIC TYPE FRAMES:
             case 130:   decode_str += "Bf" # kGetMergeRateResp
             case 5: # kGetDataResp 
                 decode_str += "B" # ID Count
@@ -133,6 +139,17 @@ class TRAX:
         
         decode_str += "H" # CRC
         return struct.unpack(decode_str, packet)
+    
+    # returns a struct lib char string based on payload automatically
+    @staticmethod
+    def struct_chars(payload):
+        encode_str = ""
+        for p in payload:
+            if type(p) ==   type(1):    encode_str += "B" # UInt8
+            elif type(p) == type(1.0):  encode_str += "f" # Float32
+            elif type(p) == type(True): encode_str += "B" # Boolean represented as UInt8
+            else:                       encode_str += "f" # Default - Float32
+        return encode_str
 
     # returns the struct lib char based on the Component ID
     @staticmethod
@@ -156,17 +173,6 @@ class TRAX:
             case 75:    return "f"   # kGyroY - Float32
             case 76:    return "f"   # kGyroZ - Float32
             case _:     return "f"   # Default - UInt8
-
-    # returns a struct lib char string based on payload automatically
-    @staticmethod
-    def struct_chars(payload):
-        encode_str = ""
-        for p in payload:
-            if type(p) ==   type(1):    encode_str += "B" # UInt8
-            elif type(p) == type(1.0):  encode_str += "f" # Float32
-            elif type(p) == type(True): encode_str += "B" # Boolean represented as UInt8
-            else:                       encode_str += "f" # Default - Float32
-        return encode_str
     
     # returns the struct lib char based on the config ID
     @staticmethod
@@ -185,7 +191,7 @@ class TRAX:
             case 19:    return "I" # kAccelCoeffSet - UInt32
             case _:     return "B" # Default - UInt8
     
-    # parses bytes to make more legible
+    # parses bytes to make legible string
     @staticmethod
     def parse_bytes(bytes):
         return "".join(f"{b:02X} " for b in bytes)        

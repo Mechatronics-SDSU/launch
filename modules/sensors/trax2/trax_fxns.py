@@ -8,14 +8,14 @@ import logging
     https://github.com/rsunderr
     rwork@sundermeyer.com
 """
+
 # wrapper class for trax-related functions
 class TRAX:
     # constructor (serial and baud rate)
     def __init__(self, ser=None, baud=38400):
         self.ser = ser
         self.baud = baud
-        self.lg = logging.getLogger()
-    
+        self.lg = logging.getLogger(__name__) # TODO replace some prints with debugs
     
     # establishes usb serial connection to trax
     def connect(self):
@@ -47,8 +47,6 @@ class TRAX:
         packet += frameID.to_bytes(1, byteorder='big')
         packet += payload_bytes
         packet += TRAX.calc_CRC(packet).to_bytes(2, byteorder='big')
-
-        print("TRANSMISSION:\t", TRAX.parse_bytes(packet))
         return packet
     
     # generates a byte array based on frameID and tuple/array of specification IDs
@@ -68,9 +66,12 @@ class TRAX:
             case 107:   encode_str += "B" # kSetDistortMode - UInt8 
             case 119:   encode_str += "B" # kSetMagTruthMethod - UInt8 
             case 128:   encode_str += "Bf" # kSetMergeRate - UInt8 Float32
-            # ID SPECIFIC TYPE FRAMES:
-            case 3:     encode_str += TRAX.struct_chars(payload)# kSetDataComponents - ID Specific
-            case 6:     encode_str += "B" + TRAX.struct_chars(payload[1:]) # kSetConfig - UInt8 + ID Specific
+            # ID SPECIFIC FRAMES: TODO: not sure if quaternion works
+            case 3: # kSetDataComponents - UInt8 + ID Specific...
+                encode_str += "B" # component count
+                for _ in payload[1:]: # NOTE: expected tuple payload: (ID count, ID, ID, ...)
+                    encode_str += "B"
+            case 6:     encode_str += "B" + TRAX.struct_chars(payload[1:]) # kSetConfig - UInt8 + ID Specific...
             case 12: # kSetFIRFilters - ID Specific
                 encode_str += "BBB"
                 N = payload[2] # NOTE: number of Float64 filter vals in payload based on 3rd bit of payload: (x,x, N, ...)
@@ -82,7 +83,48 @@ class TRAX:
 
     # transmits packet over USB, frame ID is an int, tuple/array for payload values if applicable
     def send_packet(self, frameID, payload=None):
-        self.ser.write(TRAX.get_packet(frameID, payload))
+        fID = frameID
+        if type(frameID) == type("str"): fID = TRAX.get_frame_id(frameID)
+
+        packet = TRAX.get_packet(fID, payload)
+        self.ser.write(packet)
+        print("TRANSMISSION:\t", TRAX.parse_bytes(packet))
+
+    # returs an int for the frame ID given the string name of a frame
+    @staticmethod
+    def get_frame_id(frameID_str):
+        match frameID_str:
+            case "kGetModInfo":         return 1
+            case "kSetDataComponents":  return 3
+            case "kGetData":            return 4
+            case "kSetConfig":          return 6
+            case "kGetConfig":          return 7
+            case "kSave":               return 9
+            case "kStartCal":           return 10
+            case "kStopCal":            return 11
+            case "kSetFIRFilters":      return 12
+            case "kGetFIRFilters":      return 13
+            case "kPowerDown":          return 15
+            case "kStartContinuousMode":return 21
+            case "kStopContinuousMode": return 22
+            case "kSetAcqParams":       return 24
+            case "kGetAcqParams":       return 25
+            case "kTakeUserCalSample":  return 31
+            case "kFactoryMagCoeff":    return 29
+            case "kTakeUserSample":     return 31
+            case "kFactoryAccelCoeff":  return 36
+            case "kCopyCoeffSet":       return 43
+            case "kSerialNumber":       return 52
+            case "kSetFunctionalMode":  return 79
+            case "kGetFunctionalMode":  return 80
+            case "kSetDistortMode":     return 107
+            case "kGetDistortMode":     return 108
+            case "kSetResetRef":        return 110
+            case "kSetMagTruthMethod":  return 119
+            case "kGetMagTruthMethod":  return 120
+            case "kSetMergeRate":       return 128
+            case "kGetMergeRate":       return 129
+            case _: print("Invalid Frame ID")
     
     # receives and reads packet from TRAX, checks checksum, returns a tuple of values read 
     # if the datagram includes ID Specific types, pass the payload tuple/array from the prior send_packet() call that made the query
@@ -118,7 +160,7 @@ class TRAX:
             case 81:    decode_str += "B" # kGetFunctionalModeResp
             case 109:   decode_str += "B" # kGetDistortionModeResp
             case 121:   decode_str += "B" # kGetMagTruthMethodResp
-            # ID SPECIFIC TYPE FRAMES:
+            # ID SPECIFIC RAMES: TODO: not sure if quaternion works
             case 130:   decode_str += "Bf" # kGetMergeRateResp
             case 5: # kGetDataResp 
                 decode_str += "B" # ID Count

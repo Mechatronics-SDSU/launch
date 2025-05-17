@@ -1,6 +1,7 @@
 from trax_fxns import TRAX
 import serial
 import struct
+import time
 
 """
     Created by Ryan Sundermeyer
@@ -10,25 +11,29 @@ import struct
 
 trax = TRAX()
 trax.connect()
-# datagram: [ byte count uint16 ] [ frame ID uint8 ] [ payload (opt) ] [ CRC uint16 ]
 
-# check device version
-frameID = 1
-trax.send_packet(frameID)
-resp = trax.recv_packet()
-print(resp)
-typ = TRAX.uint_to_str(resp[2], 32)
-rev = TRAX.uint_to_str(resp[3], 32)
-print(typ)
-print(rev)
-print()
-
-# check if big endian
-frameID = 7
-payload = (6,)
+# kSetAcqParams
+frameID = "kSetAcqParams" # OR =24
+payload = (False, False, 0.0, 0.001)
 trax.send_packet(frameID, payload)
-resp = trax.recv_packet(payload)
-print(resp)
-print("Big Endian: ", resp[3])
+# kSetAcqParamsDone
+data = trax.recv_packet()
+print(data[1] == 26)
+
+# kSetDataComponents
+frameID = "kSetDataComponents" # OR =3
+payload = (4, 0x5, 0x18, 0x19, 0x4f)
+trax.send_packet(frameID, payload)
+
+# kStartContinuousMode
+frameID = "kStartContinuousMode" # OR =21
+trax.send_packet(frameID)
+
+data = trax.recv_packet()
+
+# kStopContinuousMode
+#frameID = "kStopContinuousMode" # OR =22
+#trax.send_packet(frameID)
+
 
 trax.close()

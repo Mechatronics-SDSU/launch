@@ -6,15 +6,19 @@ import time
 """
     Created by Ryan Sundermeyer
     https://github.com/rsunderr
-    rwork@sundermeyer.com
+    mechatronics@sundermeyer.com
 """
 
 trax = TRAX()
 trax.connect()
 
+# kStopContinuousMode
+frameID = "kStopContinuousMode" # OR =22
+trax.send_packet(frameID)
+
 # kSetAcqParams
 frameID = "kSetAcqParams" # OR =24
-payload = (False, False, 0.0, 0.001)
+payload = (False, False, 0.0, 0.0001) # (T/F: poll mode/cont mode, compass flush bool (set False), reserved (set 0), float delay)
 trax.send_packet(frameID, payload)
 # kSetAcqParamsDone
 data = trax.recv_packet()
@@ -22,18 +26,21 @@ print(data[1] == 26)
 
 # kSetDataComponents
 frameID = "kSetDataComponents" # OR =3
-payload = (4, 0x5, 0x18, 0x19, 0x4f)
+payload = (2, 0x5, 0x18) # 2 comps: heading, pitch
 trax.send_packet(frameID, payload)
 
 # kStartContinuousMode
 frameID = "kStartContinuousMode" # OR =21
 trax.send_packet(frameID)
 
-data = trax.recv_packet()
+while True:
+    data = trax.recv_packet(payload)
+    print(data)
+
+    if data[4] < 90 or data[4] > 270: break # exit if aiming to left
 
 # kStopContinuousMode
-#frameID = "kStopContinuousMode" # OR =22
-#trax.send_packet(frameID)
-
+frameID = "kStopContinuousMode" # OR =22
+trax.send_packet(frameID)
 
 trax.close()

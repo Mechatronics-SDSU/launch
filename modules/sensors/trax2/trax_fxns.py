@@ -6,7 +6,7 @@ import logging
 """
     Created by Ryan Sundermeyer
     https://github.com/rsunderr
-    rwork@sundermeyer.com
+    mechatronics@sundermeyer.com
 """
 
 # wrapper class for trax-related functions
@@ -36,6 +36,23 @@ class TRAX:
     # closes serial connection
     def close(self):
         self.ser.close()
+    
+    # prints information about using the TRAX wrapper class
+    @staticmethod
+    def help():
+        print("This is the TRAX python wrapper class to interface with the PNI TRAX 2 AHRSE sensor.")
+        print("Please refer to Chapter 7 'Operation with PNI Binary Protocol' of the data sheet:\nhttps://www.pnisensor.com/wp-content/uploads/TRAX2-User-Manual.pdf\n")
+        print("SETUP")
+        print("To use this wrapper class, start with the following:\ntrax = TRAX()\ntrax.connect()\n#your code here\ntrax.close()\n")
+        print("SENDING DATA")
+        print("trax.send_packet(frame ID, payload)\nUsage: frame ID should be an int from the table or the string name of the command, and payload should be a tuple or array of values.")
+        print("This function returns nothing.\n")
+        print("RECEIVING DATA")
+        print("trax.recv_packet()\nUsage: In most cases, you can leave the parameters empty. If the command says it has ID specific values, just pass the payload from whatever previous command this one is answering.")
+        print("This function returns a tuple of values according to the datagram in the data sheet.\n")
+        print("DATAGRAM")
+        print("[ byte count uint16 ] [ frame ID uint8 ] [ payload (optional) ] [ CRC uint16 ]\n\n")
+
 
     # returns and prints byte array packet based on frame ID and payload in trax-readable format
     @staticmethod
@@ -129,7 +146,12 @@ class TRAX:
     # receives and reads packet from TRAX, checks checksum, returns a tuple of values read 
     # if the datagram includes ID Specific types, pass the payload tuple/array from the prior send_packet() call that made the query
     def recv_packet(self, payload=None):
-        packet = self.ser.readline() # read input message
+        #packet = self.ser.readline() # read input message
+        packet = self.ser.read(2)
+        byteCount = struct.unpack(">H", packet)[0]
+        restOfPacket = self.ser.read(byteCount - 2)
+        if restOfPacket != None: packet += restOfPacket
+
         if packet == b'': # if packet is empty, warn user and stop fxn
             self.lg.critical("NO MESSAGE RECEIVED")
             return -1
@@ -149,6 +171,7 @@ class TRAX:
     # if the datagram includes ID Specific types, pass the payload tuple from the prior send_packet() call that made the query
     @staticmethod
     def read_packet(packet, payload=None):
+        #byteCount = struct.unpack(">H", packet[:2])[0]
         frameID = packet[2] # get frame ID from packet (bytes)
         decode_str = ">HB" # big endian, byte count, ID
         match frameID:
@@ -160,13 +183,13 @@ class TRAX:
             case 81:    decode_str += "B" # kGetFunctionalModeResp
             case 109:   decode_str += "B" # kGetDistortionModeResp
             case 121:   decode_str += "B" # kGetMagTruthMethodResp
-            # ID SPECIFIC RAMES: TODO: not sure if quaternion works
+            # ID SPECIFIC FRAMES: TODO: not sure if quaternion works
             case 130:   decode_str += "Bf" # kGetMergeRateResp
             case 5: # kGetDataResp 
                 decode_str += "B" # ID Count
-                id_count = payload[0]
                 id_list = payload[1:]
-                if id_count != len(id_list): print("INCORRECT NUMBER OF IDs IN PAYLOAD: DOES NOT MATCH ID COUNT")
+
+                #if id_count != len(id_list): print("INCORRECT NUMBER OF IDs IN PAYLOAD: DOES NOT MATCH ID COUNT")
                 for id in id_list: # NOTE: expected tuple payload from prior kSetDataComponents call: (ID count, ID, ID, ...)
                     decode_str += "B" # reads: ID Count, ID, Status, ID, Status, ...
                     decode_str += TRAX.componentID_type(id) # gets struct lib char based on Component ID

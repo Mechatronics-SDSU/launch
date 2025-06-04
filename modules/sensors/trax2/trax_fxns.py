@@ -1,7 +1,7 @@
 import struct
-import subprocess
-import serial
 import logging
+import serial
+from serial.tools import list_ports
 
 """
     Created by Ryan Sundermeyer
@@ -19,20 +19,20 @@ class TRAX:
     
     # establishes usb serial connection to trax
     def connect(self):
-        print("USB CONNECTIONS: ")
-        connections = subprocess.run("ls /dev/tty.usbserial*", shell=True, capture_output=True, text=True)
-        print(connections.stdout)
+        trax1 = "A1019O07"
+        trax2 = "FTBD1LEK"
+        ports = list_ports.comports()
+        for port in ports:
+            if port.serial_number == trax1 or port.serial_number == trax2: # connect to a trax
+                try:
+                    self.ser = serial.Serial(port.device, self.baud, timeout=1)
+                    print("TRAX CONNECTED: ", port.device)
+                    return
+                except:
+                    self.lg.critical("TRAX FOUND, UNABLE TO CONNECT")
+                    return
+        self.lg.critical("NO TRAX FOUND")
 
-        try:
-            self.ser = serial.Serial('/dev/tty.usbserial-FTBD1LEK', self.baud, timeout=1) # trax 2
-            print("TRAX 2 CONNECTED")
-        except:
-            try:
-                self.ser = serial.Serial('/dev/tty.usbserial-A1019O07', self.baud, timeout=1) # trax 1
-                print("TRAX 1 CONNECTED")
-            except:
-                self.lg.critical("NO CONNECTION FOUND")
-    
     # closes serial connection
     def close(self):
         self.ser.close()

@@ -5,6 +5,8 @@ from modules.pid.pid_interface              import PIDInterface
 from modules.sensors.a50_dvl.dvl_interface  import DVL_Interface
 from modules.vision.vision_main             import VideoRunner
 from utils.kill_button_interface            import Kill_Button_Interface
+from fsm                                    import FSM
+#from missionctrl                            import MissionControl
 
 """
     discord: @kialli
@@ -14,6 +16,17 @@ from utils.kill_button_interface            import Kill_Button_Interface
     Combined the old launch.py with the launch.py.DVL_Test
     
 """
+"""
+def main():
+    # set state
+    state = "normal"
+
+    msn_ctrl = MissionControl()
+    msn_ctrl.next_state(state)
+
+    while True: msn_ctrl.loop()
+"""
+
 def main():
     # create shared memory
     shared_memory_object = SharedMemoryWrapper()
@@ -26,8 +39,7 @@ def main():
         # create objects
         vis_object = VideoRunner(shared_memory_object, temp_x_hard_deadzone) #, shared_memory_object.x_hard_deadzone)
         interface = MotorInterface(shared_memory_object)
-        kill_btn = Kill_Button_Interface(shared_memory_object)
-        
+        kill_btn = Kill_Button_Interface(shared_memory_object)        
         
         #create processes
         vis_process = Process(target=vis_object.run_loop)

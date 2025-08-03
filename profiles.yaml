@@ -1,0 +1,13 @@
+all:
+  - "DVL"
+  - "PID"
+  - "Vision"
+  - "Logger"
+  - "AHRS"
+  - "Depth"
+  - "Kill Button"
+
+PID:
+  - "PID"
+  - "DVL"
+  - "Logger"
